@@ -1,33 +1,38 @@
 package org.example.pipeline;
 
-import java.util.List;
-
 /**
  * @author minjie
  *
  */
 public abstract class Pipeline<T extends Context> {
 
-    private List<Step<T>> steps;
+    private Valve<T> first;
 
     public Pipeline() {
-        this.steps = initSteps();
+        this.first = initValve();
+        assert this.first != null;
+        assert !detectCycle(this.first);
     }
 
-    protected abstract List<Step<T>> initSteps();
-
-    protected void beforeInvoke(T context) {
+    private boolean detectCycle(Valve<T> valve) {
+        Valve<T> walker = valve;
+        Valve<T> runner = valve;
+        while (runner != null && walker != null) {
+            walker = walker.getNext();
+            if (runner.getNext() == null) {
+                return false;
+            }
+            runner = runner.getNext().getNext();
+            if (walker == runner) {
+                return true;
+            }
+        }
+        return false;
     }
+
+    protected abstract Valve<T> initValve();
 
     public void invoke(final T context) {
-        try {
-            beforeInvoke(context);
-            steps.forEach(step -> step.invoke(context));
-        } finally {
-            afterInvoke(context);
-        }
-    }
-
-    protected void afterInvoke(T context) {
+        this.first.invoke(context);
     }
 }
